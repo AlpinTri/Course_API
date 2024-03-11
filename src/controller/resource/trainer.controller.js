@@ -2,7 +2,7 @@ const Trainer = require('../../model/trainer.model')
 const createError = require('http-errors')
 const { v4: uuidv4 } = require('uuid')
 const validator = require('validator')
-const checkUsedEmail = require('../../utilities/checkUsedEmail.helper')
+const checkUsedEmail = require('../../utilities/checkUsedEmail.util')
 const { save, destroy, isSame } = require('../../../public/handler')
 const sequelizeConfig = require('../../config/sequelize.config')
 

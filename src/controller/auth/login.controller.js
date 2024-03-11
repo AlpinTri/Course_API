@@ -4,7 +4,7 @@ const User = require('../../model/user.model')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const Token = require('../../model/token.model')
-const checkCookie = require('../../utilities/checkCookie.helper')
+const checkCookie = require('../../utilities/checkCookie.util')
 
 module.exports = async (req, res, next) => {
   const { email, password } = req.body

@@ -1,11 +1,11 @@
 const Company = require('../../model/company.model')
 const createError = require('http-errors')
 const { v4: uuidv4 } = require('uuid')
-const isEmailUsed = require('../../utilities/checkUsedEmail.helper')
+const isEmailUsed = require('../../utilities/checkUsedEmail.util')
 const validator = require('validator')
 const User = require('../../model/user.model')
 const sequelizeConfig = require('../../config/sequelize.config')
-const generatePassword = require('../../utilities/passwordGenerator.helper')
+const generatePassword = require('../../utilities/passwordGenerator.util')
 const sendEmail = require('../../utilities/emailSender.util')
 
 module.exports.findAll = async (req, res, next) => {

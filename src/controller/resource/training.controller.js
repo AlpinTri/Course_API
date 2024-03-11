@@ -5,7 +5,7 @@ const Student = require('../../model/student.model')
 const Course = require('../../model/course.model')
 const User = require('../../model/user.model')
 const { v4: uuidv4 } = require('uuid')
-const pwGenerator = require('../../utilities/passwordGenerator.helper')
+const pwGenerator = require('../../utilities/passwordGenerator.util')
 const sendMail = require('../../utilities/emailSender.util')
 const sequelizeConfig = require('../../config/sequelize.config')
 

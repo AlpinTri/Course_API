@@ -1,18 +1,13 @@
 const sequelizeConfig = require('../../config/sequelize.config')
-const checkEmail = require('../../utilities/checkUsedEmail.helper')
+const checkEmail = require('../../utilities/checkUsedEmail.util')
 const createError = require('http-errors')
 const Company = require('../../model/company.model')
 const Student = require('../../model/student.model')
-// const Training = require('../../model/training.model')
 const { v4: uuidv4 } = require('uuid')
 
 module.exports.individual = async (req, res, next) => {
   const { email, name, gender, phoneNumber, birthDate, address, courseId } = req.body
-  // await Training.create({
-  //   studentId: newStudent.dataValues._id,
-  //   courseId,
-  //   date: now
-  // }, { transaction: t })
+
   const t = await sequelizeConfig.transaction()
 
   try {

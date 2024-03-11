@@ -3,6 +3,7 @@ require('dotenv').config()
 const express = require('express')
 const cookieParser = require('cookie-parser')
 const fileUpload = require('express-fileupload')
+const helmet = require('helmet')
 
 // middleware require
 const errorHandler = require('./middleware/errorHandler.middleware')
@@ -14,6 +15,7 @@ const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
+app.use(helmet())
 app.use(fileUpload({
   limits: {
     fileSize: 5 * 1024 * 1024

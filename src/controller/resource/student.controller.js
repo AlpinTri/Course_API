@@ -1,7 +1,7 @@
 const validator = require('validator')
 const createError = require('http-errors')
 const { v4: uuidv4 } = require('uuid')
-const checkUsedEmail = require('../../utilities/checkUsedEmail.helper')
+const checkUsedEmail = require('../../utilities/checkUsedEmail.util')
 const Student = require('../../model/student.model')
 const User = require('../../model/user.model')
 const sequelizeConfig = require('../../config/sequelize.config')
