@@ -13,7 +13,7 @@ module.exports = (email, password) => {
   const messageOptions = {
     from: 'Alpin Tri Pranjadata <alpintripranjadata@gmail.com>',
     to: email,
-    subject: 'Nodemailer Test',
+    subject: 'Password untuk akun kursus kamu',
     html: `<p>Password kamu adalah ${password}</p>`
   }
 

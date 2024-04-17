@@ -1,10 +1,11 @@
 /* eslint-disable no-async-promise-executor */
+// Utils for check is email that pass to argument is used in other table
 const Company = require('../model/company.model')
 const User = require('../model/user.model')
 const Trainer = require('../model/trainer.model')
 const Student = require('../model/student.model')
 
-module.exports = (email, role = undefined) => {
+module.exports = (email) => {
   return new Promise(async (resolve, reject) => {
     try {
       const foundCompany = await Company.findOne({
@@ -31,20 +32,11 @@ module.exports = (email, role = undefined) => {
         }
       })
 
-      // If the email has been used in one of tables and the role is equal to 'super admin'
-      if (role === 'admin' && (foundCompany || foundStudent || foundTrainer || foundUser)) resolve(true)
-
-      if (role === 'business' && foundCompany) resolve(true)
-
-      if (role === 'student' && foundCompany) resolve(true)
-
-      if (role === 'trainer' && foundCompany) resolve(true)
-
-      if (!role && (foundCompany || foundStudent || foundTrainer || foundUser)) resolve(true)
+      if (foundCompany || foundStudent || foundTrainer || foundUser) return resolve(true)
 
       resolve(false)
     } catch (err) {
-      reject(err)
+      reject(err.message)
     }
   })
 }

@@ -3,26 +3,49 @@ const Trainer = require('../../model/trainer.model')
 const createError = require('http-errors')
 const Student = require('../../model/student.model')
 const Course = require('../../model/course.model')
-const User = require('../../model/user.model')
-const { v4: uuidv4 } = require('uuid')
-const pwGenerator = require('../../utilities/passwordGenerator.util')
-const sendMail = require('../../utilities/emailSender.util')
 const sequelizeConfig = require('../../config/sequelize.config')
+const { Op } = require('sequelize')
+const generateInvoice = require('../../utilities/transactionIdGenerator.util')
+const { saveCert, destroy } = require('../../../public/handler')
 
 module.exports.findAll = async (req, res, next) => {
+  const { search } = req.query
+  const condition = {
+    student: {},
+    trainer: {},
+    course: {}
+  }
+
   try {
-    const foundTrainings = await Training.findAll()
+    if (typeof search === 'string') {
+      condition.student.name = { [Op.iLike]: `%${search.trim()}%` }
+      condition.trainer.name = { [Op.iLike]: `%${search.trim()}%` }
+      condition.course.courseName = { [Op.iLike]: `%${search.trim()}%` }
+    }
 
-    if (!foundTrainings.length) return next(createError(404, 'Trainings not found'))
-
-    const trainings = foundTrainings.map(trn => trn.dataValues)
+    const foundTrainings = await Training.findAll({
+      include: [
+        {
+          model: Trainer,
+          attributes: ['name']
+        },
+        {
+          model: Student,
+          attributes: ['name']
+        },
+        {
+          model: Course,
+          attributes: ['courseName']
+        }
+      ]
+    })
 
     res
       .status(200)
       .json({
         success: true,
-        message: 'Ok',
-        data: trainings
+        message: 'Success',
+        data: foundTrainings
       })
   } catch (err) {
     next(err)
@@ -33,7 +56,9 @@ module.exports.findOne = async (req, res, next) => {
   const { _id } = req.params
 
   try {
-    const foundTraining = await Training.findByPk(_id)
+    const foundTraining = await Training.findByPk(_id, {
+      include: ['student', 'course', 'schedules', 'trainer']
+    })
 
     if (!foundTraining) return next(createError(404, 'Training not found'))
 
@@ -42,7 +67,7 @@ module.exports.findOne = async (req, res, next) => {
       .json({
         success: true,
         message: 'Ok',
-        data: foundTraining.dataValues
+        data: foundTraining
       })
   } catch (err) {
     next(err)
@@ -50,25 +75,27 @@ module.exports.findOne = async (req, res, next) => {
 }
 
 module.exports.createOne = async (req, res, next) => {
-  const { trainerId, studentId, courseId, isGraduate, isApproval, date } = req.body
+  const { trainerId, studentId, courseId } = req.body
 
   try {
-    const foundTrainer = await Trainer.findByPk(trainerId)
+    const now = new Date(Date.now()).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' }).substring(0, 10).split('/').reverse().join('-')
     const foundStudent = await Student.findByPk(studentId)
     const foundCourse = await Course.findByPk(courseId)
 
-    if (!foundStudent || !foundCourse) return next(createError(404, 'Course or Student not found'))
+    if (!foundStudent) return next(createError(404, 'Student not found'))
+    if (!foundCourse) return next(createError(404, 'Course not found'))
 
     const trainingData = {
-      _id: uuidv4(),
+      _id: generateInvoice(),
       studentId,
       courseId,
-      isGraduate,
-      isApproval,
-      date
+      date: now
     }
 
-    if (foundTrainer) trainingData.trainerId = trainerId
+    if (trainerId !== undefined) {
+      const foundTrainer = await Trainer.findByPk(trainerId)
+      if (foundTrainer) trainingData.trainerId = trainerId
+    }
 
     await Training.create(trainingData)
 
@@ -84,41 +111,26 @@ module.exports.createOne = async (req, res, next) => {
 }
 
 module.exports.updateOne = async (req, res, next) => {
-  const { trainerId, studentId, courseId, isApproval, isGraduate, date } = req.body
+  const { trainerId, studentId, courseId, isApproval, isGraduate } = req.body
   const { _id } = req.params
-
-  const trainingData = {}
+  const status = {
+    isGraduate: isGraduate !== undefined ? JSON.parse(isGraduate) : '',
+    isApproval: isApproval !== undefined ? JSON.parse(isApproval) : ''
+  }
 
   const t = await sequelizeConfig.transaction()
 
   try {
-    const password = pwGenerator()
-
     const foundTraining = await Training.findByPk(_id)
 
     if (!foundTraining) return next(createError(404, 'Training not found'))
 
-    const stateBeforeUpdate = foundTraining.dataValues.isApproval
+    if (trainerId) foundTraining.trainerId = trainerId
+    if (studentId) foundTraining.studentId = studentId
+    if (courseId) foundTraining.courseId = courseId
+    if (status.isApproval === true || status.isApproval === false || status.isApproval === null) foundTraining.isApproval = status.isApproval
+    if (status.isGraduate === true || status.isGraduate === false) foundTraining.isGraduate = status.isGraduate
 
-    if (trainerId) trainingData.trainerId = trainerId
-    if (studentId) trainingData.studentId = studentId
-    if (courseId) trainingData.courseId = courseId
-    if (isApproval === true || isApproval === false) trainingData.isApproval = isApproval
-    if (isGraduate) trainingData.isGraduate = isGraduate
-    if (date) trainingData.date = date
-
-    const user = await foundTraining.getStudent()
-
-    if (stateBeforeUpdate === false && isApproval === true && !user.dataValues.companyId) {
-      await User.create({
-        _id: uuidv4(),
-        email: user.dataValues.email,
-        password,
-        isActive: true
-      }, { transaction: t })
-    }
-
-    foundTraining.set(trainingData)
     await foundTraining.save({ transaction: t })
 
     await t.commit()
@@ -129,8 +141,6 @@ module.exports.updateOne = async (req, res, next) => {
         success: true,
         message: 'Updated'
       })
-
-    sendMail(user.dataValues.email, password)
   } catch (err) {
     await t.rollback()
     next(err)
@@ -151,6 +161,38 @@ module.exports.destroyOne = async (req, res, next) => {
       .status(204)
       .send()
   } catch (err) {
+    next(err)
+  }
+}
+
+module.exports.setCert = async (req, res, next) => {
+  const { _id } = req.params
+  let oldFile = null
+
+  try {
+    const foundTraining = await Training.findOne({ where: { _id } })
+
+    if (!foundTraining) return next(createError(404, 'Training not found'))
+
+    if (foundTraining.certificate) oldFile = foundTraining.certificate
+
+    const filename = await saveCert(req)
+
+    foundTraining.certificate = filename
+    foundTraining.isGraduate = true
+
+    await foundTraining.save()
+
+    if (oldFile) destroy(oldFile, 'certificates')
+
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: 'Success'
+      })
+  } catch (err) {
+    console.error(err)
     next(err)
   }
 }

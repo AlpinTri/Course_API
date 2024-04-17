@@ -4,26 +4,33 @@ const { v4: uuidv4 } = require('uuid')
 const checkUsedEmail = require('../../utilities/checkUsedEmail.util')
 const Student = require('../../model/student.model')
 const User = require('../../model/user.model')
+const Training = require('../../model/training.model')
 const sequelizeConfig = require('../../config/sequelize.config')
+const generatePassword = require('../../utilities/passwordGenerator.util')
+const sendEmail = require('../../utilities/emailSender.util')
+const { Op } = require('sequelize')
 
 module.exports.findAll = async (req, res, next) => {
-  const { company } = req.query
+  const { company, search } = req.query
 
-  const condition = {}
+  const condition = {
+    where: {}
+  }
 
   try {
-    if (company) condition.where = { companyId: company }
+    if (company === '0') condition.where.companyId = { [Op.is]: null }
+    if (company === '1') condition.where.companyId = { [Op.not]: null }
+    if (typeof search === 'string') condition.where.name = { [Op.iLike]: `%${search.trim()}%` }
 
     const foundStudents = await Student.findAll(condition)
 
-    if (!foundStudents.length) return next(createError(404, 'Student not found'))
-
+    console.log(foundStudents)
     res
       .status(200)
       .json({
         success: true,
-        message: 'Ok',
-        data: foundStudents.map(student => student.dataValues)
+        message: 'Success',
+        data: foundStudents
       })
   } catch (err) {
     next(err)
@@ -34,16 +41,30 @@ module.exports.findOne = async (req, res, next) => {
   const { _id } = req.params
 
   try {
-    const foundStudent = await Student.findByPk(_id)
+    const foundStudent = await Student.findByPk(_id, {
+      include: ['company']
+    })
 
     if (!foundStudent) return next(createError(404, 'Student not found'))
+
+    const foundTrainings = await Training.findAll({
+      where: {
+        studentId: foundStudent._id
+      },
+      include: 'course'
+    })
+
+    if (!foundTrainings) return next(createError(404, 'Student not found'))
 
     res
       .status(200)
       .json({
         success: true,
-        message: 'Ok',
-        data: foundStudent.dataValues
+        message: 'Success',
+        data: {
+          ...foundStudent.toJSON(),
+          trainings: foundTrainings
+        }
       })
   } catch (err) {
     next(err)
@@ -79,7 +100,7 @@ module.exports.createOne = async (req, res, next) => {
       .json({
         success: true,
         message: 'Created',
-        data: newStudent.dataValues
+        data: newStudent
       })
   } catch (err) {
     next(err)
@@ -87,35 +108,72 @@ module.exports.createOne = async (req, res, next) => {
 }
 
 module.exports.updateOne = async (req, res, next) => {
-  const { companyId, name, gender, phoneNumber, birthDate, address } = req.body
+  const { name, gender, phoneNumber, birthDate, address, isApproval } = req.body
   const { _id } = req.params
+
+  const t = await sequelizeConfig.transaction()
 
   try {
     const foundStudent = await Student.findByPk(_id)
+    const status = isApproval !== undefined ? JSON.parse(isApproval) : ''
 
     if (!foundStudent) return next(createError(404, 'Student not found'))
 
-    const updateData = {}
+    const beforeState = foundStudent.isApproval
 
-    if (companyId) updateData.companyId = companyId
-    if (name) updateData.name = name
-    if (gender) updateData.gender = gender
-    if (phoneNumber) updateData.phoneNumber = phoneNumber
-    if (birthDate) updateData.birthDate = birthDate
-    if (address) updateData.address = address
+    if (name) foundStudent.name = name
+    if (gender) foundStudent.gender = gender
+    if (phoneNumber) foundStudent.phoneNumber = phoneNumber
+    if (birthDate) foundStudent.birthDate = birthDate
+    if (address) foundStudent.address = address
+    if (status === true || status === false || status === null) foundStudent.isApproval = status
 
-    foundStudent.set(updateData)
-    await foundStudent.save()
+    // Student approved
+    if (beforeState === false && status === true && !foundStudent.companyId) {
+      const email = foundStudent.email
+
+      const password = generatePassword()
+
+      const newUser = await User.create({
+        _id: uuidv4(),
+        email,
+        role: 'student',
+        password,
+        isActive: true
+      }, { transaction: t })
+
+      foundStudent.userId = newUser._id
+
+      sendEmail(email, password)
+    }
+
+    // Student canceled
+    if (beforeState === false && status === null) {
+      await Training.update(
+        { isApproval: null },
+        {
+          where: {
+            studentId: _id
+          },
+          transaction: t
+        }
+      )
+    }
+
+    await foundStudent.save({ transaction: t })
+
+    await t.commit()
 
     res
       .status(200)
       .json({
         success: true,
         message: 'Updated',
-        data: foundStudent.dataValues
+        data: foundStudent
       })
   } catch (err) {
     next(err)
+    await t.rollback()
   }
 }
 
@@ -131,13 +189,12 @@ module.exports.destroyOne = async (req, res, next) => {
 
     const foundUser = await User.findOne({
       where: {
-        email: foundStudent.dataValues.email
+        email: foundStudent.email
       }
     })
 
-    await foundStudent.destroy({ transaction: t })
-
     if (foundUser) await foundUser.destroy({ transaction: t })
+    else await foundStudent.destroy({ transaction: t })
 
     await t.commit()
 

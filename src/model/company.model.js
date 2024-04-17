@@ -1,4 +1,4 @@
-const { DataTypes, ValidationError } = require('sequelize')
+const { DataTypes } = require('sequelize')
 const sequelizeConfig = require('../config/sequelize.config')
 
 module.exports = sequelizeConfig.define('company', {
@@ -102,21 +102,12 @@ module.exports = sequelizeConfig.define('company', {
   },
   isApproval: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    allowNull: false,
-    validate: {
-      notEmpty: {
-        args: true,
-        msg: 'Approval status cannot be empty'
-      },
-      notNull: {
-        args: true,
-        msg: 'Approval status cannot be null'
-      },
-      isBoolean (value) {
-        if (!(value === true) && !(value === false)) throw new ValidationError('Approval status must be true or false')
-      }
-    }
+    allowNull: true,
+    defaultValue: false
+  },
+  userId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   timestamps: true,

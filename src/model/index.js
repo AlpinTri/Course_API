@@ -14,7 +14,7 @@ module.exports = () => {
       name: 'company_id'
     },
     targetKey: '_id',
-    onDelete: 'NO ACTION',
+    onDelete: 'RESTRICT',
     onUpdate: 'CASCADE'
   })
   Company.hasMany(Student, {
@@ -22,7 +22,7 @@ module.exports = () => {
       name: 'company_id'
     },
     sourceKey: '_id',
-    onDelete: 'NO ACTION',
+    onDelete: 'RESTRICT',
     onUpdate: 'CASCADE'
   })
 
@@ -32,7 +32,7 @@ module.exports = () => {
       name: 'trainer_id'
     },
     targetKey: '_id',
-    onDelete: 'NO ACTION',
+    onDelete: 'RESTRICT',
     onUpdate: 'CASCADE'
   })
   Trainer.hasMany(Training, {
@@ -40,7 +40,7 @@ module.exports = () => {
       name: 'trainer_id'
     },
     sourceKey: '_id',
-    onDelete: 'NO ACTION',
+    onDelete: 'RESTRICT',
     onUpdate: 'CASCADE'
   })
 
@@ -68,7 +68,7 @@ module.exports = () => {
       name: 'course_id'
     },
     targetKey: '_id',
-    onDelete: 'NO ACTION',
+    onDelete: 'RESTRICT',
     onUpdate: 'CASCADE'
   })
   Course.hasMany(Training, {
@@ -76,7 +76,7 @@ module.exports = () => {
       name: 'course_id'
     },
     sourceKey: '_id',
-    onDelete: 'NO ACTION',
+    onDelete: 'RESTRICT',
     onUpdate: 'CASCADE'
   })
 
@@ -114,5 +114,53 @@ module.exports = () => {
     sourceKey: '_id',
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE'
+  })
+
+  // User & Company
+  Company.belongsTo(User, {
+    foreignKey: {
+      name: 'user_id'
+    },
+    targetKey: '_id',
+    onDelete: 'CASCADE'
+  })
+  User.hasOne(Company, {
+    foreignKey: {
+      name: 'user_id'
+    },
+    sourceKey: '_id',
+    onDelete: 'CASCADE'
+  })
+
+  // User & Student
+  Student.belongsTo(User, {
+    foreignKey: {
+      name: 'user_id'
+    },
+    targetKey: '_id',
+    onDelete: 'CASCADE'
+  })
+  User.hasOne(Student, {
+    foreignKey: {
+      name: 'user_id'
+    },
+    sourceKey: '_id',
+    onDelete: 'CASCADE'
+  })
+
+  // User & C
+  Trainer.belongsTo(User, {
+    foreignKey: {
+      name: 'user_id'
+    },
+    targetKey: '_id',
+    onDelete: 'CASCADE'
+  })
+  User.hasOne(Trainer, {
+    foreignKey: {
+      name: 'user_id'
+    },
+    sourceKey: '_id',
+    onDelete: 'CASCADE'
   })
 }

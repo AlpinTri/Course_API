@@ -1,4 +1,3 @@
-const validator = require('validator')
 const createError = require('http-errors')
 const User = require('../../model/user.model')
 const bcrypt = require('bcrypt')
@@ -10,9 +9,6 @@ module.exports = async (req, res, next) => {
   const { email, password } = req.body
   const cookies = req.cookies
 
-  // Check email format
-  if (!validator.isEmail(email)) return next(createError(400, 'Email is invalid'))
-
   // Found the user account
   const user = await User.findOne({
     where: {
@@ -20,18 +16,20 @@ module.exports = async (req, res, next) => {
     }
   })
 
-  if (user === null) return next(createError(401, 'Invalid credentials'))
+  if (!user) return next(createError(401, 'Invalid credentials'))
 
   // Compare the password
   const match = await bcrypt.compare(password, user.password)
 
   if (!match) return next(createError(401, 'Invalid credentials'))
 
+  // Check user status acount
+  if (!user.isActive) return next(createError(403, 'Your account is blocked'))
+
   // Create Access Token & Refresh Token
   const accessToken = jwt.sign({
     data: {
-      _id: user._id,
-      role: user.role
+      _id: user._id
     }
   }, process.env.ACCESS_TOKEN_SECRET, { algorithm: 'HS256', expiresIn: process.env.ACCESS_TOKEN_EXPIRE })
 
@@ -54,6 +52,27 @@ module.exports = async (req, res, next) => {
     return next(err)
   }
 
+  const userData = {
+    role: user.role,
+    email: user.email,
+    _id: user._id
+  }
+
+  try {
+    if (user.role === 'student') {
+      const student = await user.getStudent()
+      userData.name = student.name
+    } else if (user.role === 'business') {
+      const company = await user.getCompany()
+      userData.name = company.name
+    } else if (user.role === 'trainer') {
+      const trainer = await user.getTrainer()
+      userData.name = trainer.name
+    }
+  } catch (err) {
+    return next(err)
+  }
+
   res
     .status(200)
     .cookie('jwt', refreshToken, {
@@ -64,6 +83,7 @@ module.exports = async (req, res, next) => {
     .json({
       success: true,
       message: 'Login is successful',
-      accessToken
+      accessToken,
+      data: userData
     })
 }

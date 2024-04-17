@@ -14,8 +14,6 @@ module.exports = (cookies, res) => {
       if (cookies?.jwt) {
         const foundToken = await Token.findByPk(refreshToken)
 
-        console.log(refreshToken)
-
         if (foundToken) {
           await Token.destroy({
             where: {

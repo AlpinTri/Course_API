@@ -2,8 +2,8 @@ const router = require('express').Router()
 const { findAll, findOne, createOne, updateOne, destroyOne } = require('../controller/resource/trainer.controller')
 const authorized = require('../middleware/authorized.middleware')
 
-router.get('/', authorized('admin', 'trainer'), findAll)
-router.get('/:_id', authorized('admin', 'trainer'), findOne)
+router.get('/', authorized('admin'), findAll)
+router.get('/:_id', authorized('admin'), findOne)
 
 router.post('/', authorized('admin'), createOne)
 

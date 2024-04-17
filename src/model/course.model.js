@@ -40,20 +40,20 @@ module.exports = sequelizeConfig.define('course', {
       }
     }
   },
-  description: {
+  details: {
     type: DataTypes.JSON,
     allowNull: false,
     validate: {
       notEmpty: {
         args: true,
-        msg: 'Descriptions cannot be empty'
+        msg: 'Details cannot be empty'
       },
       notNull: {
         args: true,
-        msg: 'Descriptions cannot be null'
+        msg: 'Details cannot be null'
       },
       isJSON (value) {
-        if (!validator.isJSON(value)) throw new ValidationError('Description must be JSON')
+        if (!validator.isJSON(value)) throw new ValidationError('Detail must be JSON')
       }
     }
   },
@@ -72,6 +72,20 @@ module.exports = sequelizeConfig.define('course', {
       },
       isBoolean (value) {
         if (!(value === true) && !(value === false)) throw new ValidationError('Course status must be true or false')
+      }
+    }
+  },
+  banner: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: {
+        args: true,
+        msg: 'Course status cannot be empty'
+      },
+      notNull: {
+        args: true,
+        msg: 'Course status cannot be null'
       }
     }
   }

@@ -4,6 +4,7 @@ const createError = require('http-errors')
 const Company = require('../../model/company.model')
 const Student = require('../../model/student.model')
 const { v4: uuidv4 } = require('uuid')
+const generateInvoice = require('../../utilities/transactionIdGenerator.util')
 
 module.exports.individual = async (req, res, next) => {
   const { email, name, gender, phoneNumber, birthDate, address, courseId } = req.body
@@ -11,7 +12,7 @@ module.exports.individual = async (req, res, next) => {
   const t = await sequelizeConfig.transaction()
 
   try {
-    const now = new Date(Date.now()).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' }).substring(0, 10).replaceAll('/', '-')
+    const now = new Date(Date.now()).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' }).substring(0, 10).split('/').reverse().join('-')
 
     const isUsed = await checkEmail(email)
 
@@ -27,14 +28,13 @@ module.exports.individual = async (req, res, next) => {
       address
     }, { transaction: t })
 
-    const newTr = await newStudent.createTraining({
-      _id: uuidv4(),
+    await newStudent.createTraining({
+      _id: generateInvoice(),
       studentId: newStudent.dataValues._id,
       courseId,
       date: now
     }, { transaction: t })
 
-    console.log(newTr)
     await t.commit()
 
     res
@@ -73,10 +73,10 @@ module.exports.group = async (req, res, next) => {
     }, { transaction: t })
 
     for (const student of students) {
-      const { courseId, email, name, gender, phoneNumber, birthDate, address } = student
+      const { courseId, email, name, gender, phoneNumber, birthDate } = student
       const isUsed = await checkEmail(email)
 
-      if (isUsed) return next(createError(409, `${student.email} is already used`))
+      if (isUsed) return next(createError(409, `${email} is already used`))
 
       const newStudent = await Student.create({
         _id: uuidv4(),
@@ -90,7 +90,7 @@ module.exports.group = async (req, res, next) => {
       }, { transaction: t })
 
       await newStudent.createTraining({
-        _id: uuidv4(),
+        _id: generateInvoice(),
         studentId: newStudent.dataValues._id,
         courseId,
         date: now

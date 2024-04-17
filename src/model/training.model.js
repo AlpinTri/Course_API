@@ -3,12 +3,13 @@ const sequelizeConfig = require('../config/sequelize.config')
 
 module.exports = sequelizeConfig.define('training', {
   _id: {
-    type: DataTypes.UUID,
+    type: DataTypes.STRING,
     primaryKey: true,
     field: '_id'
   },
   trainerId: {
     type: DataTypes.UUID,
+    allowNull: true,
     validate: {
       notEmpty: {
         args: true,
@@ -64,21 +65,8 @@ module.exports = sequelizeConfig.define('training', {
   },
   isApproval: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    allowNull: false,
-    validate: {
-      notEmpty: {
-        args: true,
-        msg: 'Approval status cannot be empty'
-      },
-      notNull: {
-        args: true,
-        msg: 'Approval status cannot be null'
-      },
-      isBoolean (value) {
-        if (!(value === true) && !(value === false)) throw new ValidationError('Approval status must be true or false')
-      }
-    }
+    allowNull: true,
+    defaultValue: false
   },
   date: {
     type: DataTypes.DATEONLY,
@@ -92,6 +80,10 @@ module.exports = sequelizeConfig.define('training', {
         msg: 'Date field must be a valid format'
       }
     }
+  },
+  certificate: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   underscored: true,

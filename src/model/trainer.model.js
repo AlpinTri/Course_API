@@ -60,7 +60,7 @@ module.exports = sequelizeConfig.define('trainer', {
     }
   },
   birthDate: {
-    type: DataTypes.DATE,
+    type: DataTypes.DATEONLY,
     allowNull: false,
     validate: {
       notEmpty: {
@@ -105,7 +105,11 @@ module.exports = sequelizeConfig.define('trainer', {
       }
     }
   },
-  selfImage: {
-    type: DataTypes.STRING
+  userId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
+}, {
+  underscored: true,
+  timestamps: true
 })

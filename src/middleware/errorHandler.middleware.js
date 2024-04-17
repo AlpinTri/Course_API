@@ -11,7 +11,7 @@ module.exports = async (err, req, res, next) => {
       .status(400)
       .json({
         success: false,
-        error: err.message
+        error: 'Bad request'
       })
     return
   }
@@ -28,7 +28,7 @@ module.exports = async (err, req, res, next) => {
       .status(500)
       .json({
         success: false,
-        error: err.message
+        error: 'Unexpected error'
       })
   }
 }

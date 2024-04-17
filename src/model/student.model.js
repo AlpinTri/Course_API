@@ -113,6 +113,15 @@ module.exports = sequelizeConfig.define('student', {
         msg: 'Address cannot be null'
       }
     }
+  },
+  isApproval: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: false
+  },
+  userId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   underscored: true,

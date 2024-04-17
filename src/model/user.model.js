@@ -34,11 +34,6 @@ module.exports = sequelizeConfig.define('user', {
       const salt = bcrypt.genSaltSync(10)
       const hash = bcrypt.hashSync(value, salt)
       this.setDataValue('password', hash)
-    },
-    validate: {
-      // customValidator (value) {
-      //   if (value.length < 8) throw new ValidationError('Password must be at least 8 character')
-      // }
     }
   },
   role: {

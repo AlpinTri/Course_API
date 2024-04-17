@@ -3,7 +3,7 @@ const { findAll, findOne, createOne, updateOne, destroyOne } = require('../contr
 const authorized = require('../middleware/authorized.middleware')
 
 router.get('/', authorized('admin'), findAll)
-router.get('/:_id', authorized('admin', 'business'), findOne)
+router.get('/:_id', authorized('admin'), findOne)
 
 router.post('/', authorized('admin'), createOne)
 

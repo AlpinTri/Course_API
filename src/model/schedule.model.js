@@ -1,4 +1,4 @@
-const { DataTypes, ValidationError } = require('sequelize')
+const { DataTypes } = require('sequelize')
 const sequelizeConfig = require('../config/sequelize.config')
 
 module.exports = sequelizeConfig.define('schedule', {
@@ -55,30 +55,22 @@ module.exports = sequelizeConfig.define('schedule', {
   },
   location: {
     type: DataTypes.TEXT,
+    allowNull: false,
     validate: {
       notEmpty: {
         args: true,
         msg: 'Location cannot be empty'
+      },
+      notNull: {
+        args: true,
+        msg: 'Time cannot be null'
       }
     }
   },
   isDone: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    allowNull: false,
-    validate: {
-      notEmpty: {
-        args: true,
-        msg: 'Schedule status cannot be empty'
-      },
-      notNull: {
-        args: true,
-        msg: 'Schedule status cannot be null'
-      },
-      isBoolean (value) {
-        if (!(value === true) && !(value === false)) throw new ValidationError('Schedule status must be true or false')
-      }
-    }
+    allowNull: true,
+    defaultValue: false
   }
 }, {
   underscored: true,

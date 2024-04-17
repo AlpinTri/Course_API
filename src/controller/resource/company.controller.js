@@ -7,21 +7,38 @@ const User = require('../../model/user.model')
 const sequelizeConfig = require('../../config/sequelize.config')
 const generatePassword = require('../../utilities/passwordGenerator.util')
 const sendEmail = require('../../utilities/emailSender.util')
+const { Op } = require('sequelize')
+const Student = require('../../model/student.model')
+const Training = require('../../model/training.model')
 
 module.exports.findAll = async (req, res, next) => {
+  const { search } = req.query
+  const condition = {
+    where: {}
+  }
+
   try {
-    const foundCompanies = await Company.findAll()
+    if (typeof search === 'string') {
+      condition.where = {
+        [Op.or]: [
+          {
+            companyName: { [Op.iLike]: `%${search.trim()}%` }
+          },
+          {
+            name: { [Op.iLike]: `%${search.trim()}%` }
+          }
+        ]
+      }
+    }
 
-    if (!foundCompanies.length) return next(createError(404, 'Companies not found'))
-
-    const companies = foundCompanies.map(trd => trd.dataValues)
+    const foundCompanies = await Company.findAll(condition)
 
     res
       .status(200)
       .json({
         success: true,
-        message: 'Ok',
-        data: companies
+        message: 'Success',
+        data: foundCompanies
       })
   } catch (err) {
     next(err)
@@ -32,7 +49,9 @@ module.exports.findOne = async (req, res, next) => {
   const { _id } = req.params
 
   try {
-    const foundCompany = await Company.findByPk(_id)
+    const foundCompany = await Company.findByPk(_id, {
+      include: 'students'
+    })
 
     if (!foundCompany) return next(createError(404, 'Companies not found'))
 
@@ -40,8 +59,8 @@ module.exports.findOne = async (req, res, next) => {
       .status(200)
       .json({
         success: true,
-        message: 'Ok',
-        data: foundCompany.dataValues
+        message: 'Success',
+        data: foundCompany
       })
   } catch (err) {
     next(err)
@@ -50,6 +69,8 @@ module.exports.findOne = async (req, res, next) => {
 
 module.exports.createOne = async (req, res, next) => {
   const { email, companyName, phoneNumber, address, name, jobTitle } = req.body
+
+  const t = await sequelizeConfig.transaction()
 
   try {
     if (!validator.isEmail(email)) return next(createError(400, 'Email is invalid'))
@@ -66,16 +87,19 @@ module.exports.createOne = async (req, res, next) => {
       address,
       name,
       jobTitle
-    })
+    }, { transaction: t })
+
+    await t.commit()
 
     res
       .status(201)
       .json({
         success: true,
         message: 'Created',
-        data: newCompany.dataValues
+        data: newCompany
       })
   } catch (err) {
+    await t.rollback()
     next(err)
   }
 }
@@ -88,26 +112,20 @@ module.exports.updateOne = async (req, res, next) => {
 
   try {
     const foundCompany = await Company.findByPk(_id)
+    const status = isApproval !== undefined ? JSON.parse(isApproval) : ''
 
     if (!foundCompany) return next(createError(404, 'Companies not found'))
 
-    const beforeState = foundCompany.dataValues.isApproval
+    const beforeState = foundCompany.isApproval
 
-    const companyData = {}
+    if (companyName) foundCompany.companyName = companyName
+    if (phoneNumber) foundCompany.phoneNumber = phoneNumber
+    if (address) foundCompany.name = name
+    if (jobTitle) foundCompany.jobTitle = jobTitle
+    if (status === true || status === false || status === null) foundCompany.isApproval = status
 
-    if (companyName) companyData.companyName = companyName
-    if (phoneNumber) companyData.phoneNumber = phoneNumber
-    if (address) companyData.name = name
-    if (jobTitle) companyData.jobTitle = jobTitle
-    if (isApproval === true || isApproval === false) companyData.isApproval = isApproval
-
-    foundCompany.set(companyData)
-    await foundCompany.save({ transaction: t })
-
-    console.log(beforeState)
-    if (beforeState === false && isApproval === true) {
-      console.log('pass')
-      const email = foundCompany.dataValues.email
+    if (beforeState === false && status === true) {
+      const email = foundCompany.email
 
       const foundUser = await User.findOne({
         where: {
@@ -118,7 +136,7 @@ module.exports.updateOne = async (req, res, next) => {
       const password = generatePassword()
 
       if (!foundUser) {
-        await User.create({
+        const newUser = await User.create({
           _id: uuidv4(),
           email,
           role: 'business',
@@ -126,9 +144,40 @@ module.exports.updateOne = async (req, res, next) => {
           isActive: true
         }, { transaction: t })
 
+        foundCompany.userId = newUser._id
+
         sendEmail(email, password)
       }
     }
+
+    if (beforeState === false && status === null) {
+      const [rows, students] = await Student.update(
+        { isApproval: null },
+        {
+          where: {
+            companyId: _id
+          },
+          returning: true,
+          transaction: t
+        }
+      )
+
+      console.log(rows)
+
+      for (const student of students) {
+        await Training.update(
+          { isApproval: null },
+          {
+            where: {
+              studentId: student._id
+            },
+            transaction: t
+          }
+        )
+      }
+    }
+
+    await foundCompany.save({ transaction: t })
 
     await t.commit()
 
@@ -137,7 +186,7 @@ module.exports.updateOne = async (req, res, next) => {
       .json({
         success: true,
         message: 'Updated',
-        data: foundCompany.dataValues
+        data: foundCompany
       })
   } catch (err) {
     await t.rollback()
@@ -157,13 +206,12 @@ module.exports.destroyOne = async (req, res, next) => {
 
     const foundUser = await User.findOne({
       where: {
-        email: foundCompany.dataValues.email
+        email: foundCompany.email
       }
     })
 
-    await foundCompany.destroy({ transaction: t })
-
     if (foundUser) await foundUser.destroy({ transaction: t })
+    else await foundCompany.destroy({ transaction: t })
 
     await t.commit()
 
